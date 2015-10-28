@@ -8,7 +8,7 @@ public class WorkerServlet extends HttpServlet {
 
   static final long serialVersionUID = 455555002;
 
-  public void doGet(HttpServletRequest request, HttpServletResponse response) 
+  public void doPost(HttpServletRequest request, HttpServletResponse response) 
        throws java.io.IOException
   {
     response.setContentType("text/html");
