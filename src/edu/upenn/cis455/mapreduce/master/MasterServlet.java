@@ -25,7 +25,6 @@ public class MasterServlet extends HttpServlet {
   public void doPost(HttpServletRequest request, HttpServletResponse response) 
 	       throws java.io.IOException{
 	  
-	  System.out.println("in post");
 	  Date current = new Date();
 	  String job =  request.getParameter("job");
 	  String input = request.getParameter("inputdir");
@@ -138,11 +137,18 @@ public class MasterServlet extends HttpServlet {
                 int port_num = worker.getPort();
                 Socket socket = new Socket(ip_addr,port_num);
                 
-                String requestLine = "POST /runmap HTTP/1.0 \r\n"
+                String requestLine = "POST worker/runmap HTTP/1.0 \r\n"
 						  +"\r\n";
                 
                 String body = "job="+jobinfo.getJob()+"&input="+jobinfo.getInput()+"&numThreads="+jobinfo.getNum_map_threads()
-                		+"&numWorkers="+jobinfo.getNum_active()+"\r\n";
+                		+"&numWorkers="+jobinfo.getNum_active();
+                
+                int workernum = 1;
+                for(String mapkey : workermappings.keySet()){
+                	body = body+"&worker"+workernum+"="+mapkey;
+                	workernum++;
+                }
+                
                 String message = requestLine+body;
                 
                 OutputStream output = socket.getOutputStream();
@@ -188,7 +194,7 @@ public class MasterServlet extends HttpServlet {
 	            sb.append("<td>"+info.getKeysread()+"</td>");
 	            sb.append("<td>"+info.getKeyswritten()+"</td>");
             }else{
-            	it.remove();
+            	//it.remove();
             }
         }
         
