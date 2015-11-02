@@ -22,7 +22,6 @@ public class WordCount implements Job {
 			  total+=Integer.parseInt(values[i]);
 		  }
 		  
-		  System.out.println("context "+key);
 		  context.write(key, total.toString());
 	
 	  }

@@ -21,6 +21,7 @@ public class MasterServlet extends HttpServlet {
   Queue <JobInfo> job_queue = new LinkedList <JobInfo>();
   ArrayList <WorkerInfo> current_workers = new ArrayList <WorkerInfo>();
   JobInfo current_job;
+  boolean sent_reduce = false;
 
   public void doPost(HttpServletRequest request, HttpServletResponse response) 
 	       throws java.io.IOException{
@@ -73,7 +74,6 @@ public class MasterServlet extends HttpServlet {
 	    for(WorkerInfo inf : current_workers){
 	    	String id = inf.getIp()+":"+inf.getPort();
 	    	if(id.equals(key)){
-	    		System.out.println("Updating current worker ids");
 	    		inf.setStatus(status);
 	    	}
 	    }
@@ -82,14 +82,20 @@ public class MasterServlet extends HttpServlet {
 	     * Check if all the current workers are waiting, then send reduce job
 	     */
 	    boolean all_waiting = true;
+	    int num_current_workers = this.current_workers.size();
+	    int n = 0;
+	    
 	    for(WorkerInfo worker : this.current_workers){
-	    	if(!worker.getStatus().equals("waiting")){
-	    		all_waiting = false;
+	    	if(worker.getStatus().equals("waiting")){
+	    		n++;
 	    	}
-	    		
 	    }
 	    
-	    if(all_waiting){
+	    if(n!=num_current_workers)
+	    	all_waiting = false;
+	    
+	    
+	    if(all_waiting && !sent_reduce){
 	    	for(WorkerInfo worker : this.current_workers){
 	    		String ip_addr = worker.getIp();
                 int port_num = worker.getPort();
@@ -105,6 +111,9 @@ public class MasterServlet extends HttpServlet {
                 
                 OutputStream output = socket.getOutputStream();
         		output.write(message.getBytes());
+        		
+        		sent_reduce = true;
+        		
         		output.close();
         		socket.close();
 		    }
@@ -139,6 +148,10 @@ public class MasterServlet extends HttpServlet {
         if(all_active && !job_queue.isEmpty()){
         	JobInfo jobinfo = job_queue.remove();
         	this.current_job = jobinfo;
+        	
+        	//Clear current worker list
+        	this.current_workers.clear();
+        	
         	Iterator<Entry<String, WorkerInfo>> iterator = workermappings.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry pair = (Map.Entry)iterator.next();
@@ -174,6 +187,7 @@ public class MasterServlet extends HttpServlet {
         		output.flush();
         		output.close();
         		socket.close();
+        		sent_reduce = false;
         		current_workers.add(worker);
             }
         }
@@ -185,7 +199,7 @@ public class MasterServlet extends HttpServlet {
     	PrintWriter out = response.getWriter();
     	StringBuilder sb = new StringBuilder();
     	
-    	
+    	sb.append("Name: Anwesha Das <br> Seas Login: anwesha <br><br>");
     	sb.append("The following workers are currently active: <br><br><br>");
     	sb.append("<table style=\"width:100%\" align=\"left\" border=\"1\" \">");
     	sb.append("<tr>"+

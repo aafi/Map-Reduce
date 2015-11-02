@@ -43,7 +43,6 @@ public class ReduceWorker implements Runnable{
 			if(list!=null){
 				String key = list.get(0).split("\t")[0];
 				String [] value = new String[list.size()];
-				System.out.println("worker: "+key);
 				
 				for(int i = 0 ;i<list.size();i++){
 					String k = list.get(i).split("\t")[0];

@@ -16,28 +16,34 @@ public class ReduceContext implements Context {
 	public ReduceContext(File file){
 		String filename = file.getAbsolutePath()+"/output.txt";
 		this.outputfile = new File(filename);
-		if(outputfile.exists())
-			outputfile.delete();
+		if(outputfile.exists()){
+			boolean result = outputfile.delete();
+			System.out.println("Output file "+outputfile.getAbsolutePath()+" exists. deleted = "+result);
+		}
+		
 		try {
 			outputfile.createNewFile();
 		} catch (IOException e) {
 			System.out.println("could not create output file");
 		}
+		
 	}
 	
 	@Override
 	public synchronized void write(String key, String value) {
 		PrintWriter out;
 		try {
-			out = new PrintWriter(new BufferedWriter(new FileWriter(outputfile, true)));
+			FileWriter fw = new FileWriter(outputfile, true);
+			BufferedWriter bw = new BufferedWriter(fw);
+			out = new PrintWriter(bw);
 			out.println(key+"\t"+value);
 			keyswritten++;
-			System.out.println("Written to file "+outputfile.getAbsolutePath());
+			bw.close();
+			fw.close();
 			out.close();
 		} catch (IOException e) {
 			System.out.println("Could not write to output file");
 		}
-		
 		
 	}
 

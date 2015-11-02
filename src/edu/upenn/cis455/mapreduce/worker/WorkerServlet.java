@@ -10,7 +10,6 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,7 +37,6 @@ public class WorkerServlet extends HttpServlet {
   private String job;
   
   private Integer keysread;
-  private Integer keyswritten;
   
   private MapContext mapcontext;
   private ReduceContext reducecontext;
@@ -62,7 +60,6 @@ public class WorkerServlet extends HttpServlet {
 	  
 	  worker_port = config.getInitParameter("port");
 	  keysread = 0;
-	  keyswritten = 0;
 	  
 	  HeartBeat beat = new HeartBeat();
 	  Thread t = new Thread(beat);
@@ -239,7 +236,6 @@ public class WorkerServlet extends HttpServlet {
 	  
 	  //run the reducer threads
 	  else if(pathinfo.equals("runreduce")){
-		  System.out.println("received run reduce");
 		  
 		  File outputdir = new File(storagedir+request.getParameter("output"));
 		  checkDir(outputdir);
@@ -292,11 +288,7 @@ public class WorkerServlet extends HttpServlet {
 		  }
 		  
 		  sortFile(file);
-		  int n;
-		  synchronized(keysread){
-			 n = keysread;
-		  }
-		  System.out.println("Done at "+new Date().toString()+" keysread: "+n);
+		  
 		  shutdown = false;
 			
 		  while(!shutdown){
@@ -323,7 +315,6 @@ public class WorkerServlet extends HttpServlet {
 				
 				
 				if(shutdown){
-					System.out.println("shutting down at "+new Date().toString());
 					for(ThreadpoolThread t : threadPool){
 						t.getReduceWorker().setShutdown(true);
 					}
@@ -335,17 +326,15 @@ public class WorkerServlet extends HttpServlet {
 				}
 		  } // End of while
 		  
-		  int num = 0;
 		  for(ThreadpoolThread t : threadPool){
 				try {
 					t.getThread().join();
-					num++;
 				} catch (InterruptedException e) {
 					System.out.println("Reduce Threads could not join");
 				}
 		  	}
 		  
-		  System.out.println("All thread joined "+num);
+		  job = null;
 		  status = "idle";
 		  sendWorkerStatus();
 	  }
@@ -414,12 +403,16 @@ public class WorkerServlet extends HttpServlet {
 	        	 }
 	        	 
 	        	 list = new ArrayList<String>();
-	        	 boolean added = list.add(line);
-	        	 
-	        	 System.out.println("Added new list for "+line.split("\t")[0]+" "+added);
+	        	 list.add(line);
 	        	 prev_word = line.split("\t")[0];
 	         }
 	    }
+	    
+	    synchronized(ReduceQueue.reduceQueue){
+   		 ReduceQueue.reduceQueue.add(list);
+   		 ReduceQueue.reduceQueue.notifyAll();
+   	 	}
+	    
 	    in.close();
 	} catch (IOException e) {
 		// TODO Auto-generated catch block
@@ -435,7 +428,6 @@ public class WorkerServlet extends HttpServlet {
    * @param dir
    */
   private void checkDir(File dir) {
-	  System.out.println(dir.getAbsolutePath());
 	  if(dir.exists()){
 		  for(File file : dir.listFiles()){
 			 file.delete();
@@ -445,7 +437,6 @@ public class WorkerServlet extends HttpServlet {
 	  }
 	  
 	  dir.mkdir();
-	  System.out.println(dir.getAbsolutePath()+" created");
   }
   
   /**
@@ -459,7 +450,7 @@ public class WorkerServlet extends HttpServlet {
   private void makeSpoolOutFiles(String basedir,int num, String [] workers) throws IOException{
 	  for(int i=0;i<workers.length;i++){
 		  File file = new File(basedir+"/"+(i+1)+".txt");
-		  boolean result = file.createNewFile();
+		  file.createNewFile();
 		  fileMappings.put(file, workers[i]);
 	  }
 	  
