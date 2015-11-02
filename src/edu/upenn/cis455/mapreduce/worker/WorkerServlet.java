@@ -1,9 +1,13 @@
 package edu.upenn.cis455.mapreduce.worker;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -112,7 +116,6 @@ public class WorkerServlet extends HttpServlet {
 		  MapContext context = new MapContext(workers,storagedir+"spool_out/");
 		  ArrayList<ThreadpoolThread> threadPool = new ArrayList<ThreadpoolThread>();
 		  
-		  System.out.println("STarted threads");
 		  for(int i=0;i<numthreads;i++){
 			 MapWorker worker = new MapWorker(jobclass,context);
 			 ThreadpoolThread thread = new ThreadpoolThread(worker);
@@ -122,7 +125,6 @@ public class WorkerServlet extends HttpServlet {
 		  /**
 		   * Read all key value pairs from the files in the input directory and add to queue
 		   */
-		  System.out.println("Input dir: "+inputdir.getPath());
 		  for(File file : inputdir.listFiles()){
 			  status = "mapping";
 			  BufferedReader br = new BufferedReader(new FileReader(file));
@@ -179,7 +181,6 @@ public class WorkerServlet extends HttpServlet {
 				}
 			}
 		  
-		  System.out.println("Threads finished");
 		  /**
 		   * All threads have finished executing.
 		   * Send push data signal
@@ -187,29 +188,79 @@ public class WorkerServlet extends HttpServlet {
 		  Iterator<Entry<File, String>> it = fileMappings.entrySet().iterator();
 		  while(it.hasNext()){
 			  Map.Entry pair = (Map.Entry)it.next();
-			  System.out.println("File: "+pair.getKey());
-			  System.out.println("Info: "+pair.getValue());
-			  System.out.println();
+			  String portstring = ((String) pair.getValue()).split(":")[1];
+			  String ip = ((String) pair.getValue()).split(":")[0];
+			  int port = Integer.parseInt(portstring.trim());
+			  
+			  File file = (File) pair.getKey();
+			  BufferedReader br = new BufferedReader(new FileReader(file));
+			  StringBuilder body = new StringBuilder();
+			  int b;
+			  while((b = br.read())!=-1){
+				  body.append((char)b);
+			  }
+			  
+			  Socket socket = new Socket(ip,port);
+			  String request_line = "POST /worker/pushdata HTTP/1.0\r\n"
+					  				+"Content-Length: "+body.toString().getBytes().length+"\r\n"
+					  				+"Content-Type: text/plain \r\n\r\n";
+			  
+			  String message = request_line+body.toString();
+			  
+			  socket.getOutputStream().write(message.getBytes());
+			  socket.close();
 		  }
 		  
-		  
-		  
-		  
+		  status = "waiting";
+		  sendWorkerStatus();
 		  
 	  }
 	  
 	  //run the reducer threads
 	  else if(pathinfo.equals("runreduce")){
-		  
+		  System.out.println("received run reduce");
 	  }
 	  
 	  //write data out to file
 	  else if(pathinfo.equals("pushdata")){
+		  System.out.println("received pushdata");
+		  
+		  Integer length = Integer.parseInt(request.getHeader("Content-Length"));
+		  
+		  BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
+		  String body =null;
+		  if(length!=null){
+				int total_read = 0;
+				int b;
+				StringBuilder s = new StringBuilder();
+				while(total_read<length && ((b = br.read())!=-1)){
+					s.append((char)b);
+					total_read++;
+				}
+				body = s.toString();
+		  }
+		  
+		  File file = new File(storagedir+"spool_in/output.txt");
+		  if(!file.exists()){
+			  file.createNewFile();
+			  System.out.println("created file "+file.getPath());
+		  }
+		  
+		  synchronized(file){
+			  BufferedWriter out = new BufferedWriter(new FileWriter(file, true));
+			  out.write(body);
+			  out.close();
+		  }
 		  
 	  }
     
   }
-
+  
+  /**
+   * Checks if the given dir exists. 
+   * If it does, deletes the directory and makes it again.
+   * @param dir
+   */
   private void checkDir(File dir) {
 	  if(dir.exists()){
 		  for(File file : dir.listFiles()){
@@ -222,12 +273,19 @@ public class WorkerServlet extends HttpServlet {
 	  dir.mkdir();
   }
   
+  /**
+   * Creates a file for each worker in the spool out directory
+   * @param basedir
+   * @param num
+   * @param workers
+   * @throws IOException
+   */
+  
   private void makeSpoolOutFiles(String basedir,int num, String [] workers) throws IOException{
 	  for(int i=0;i<workers.length;i++){
 		  File file = new File(basedir+"/"+(i+1)+".txt");
 		  boolean result = file.createNewFile();
 		  fileMappings.put(file, workers[i]);
-		  
 	  }
 	  
   }
@@ -285,8 +343,8 @@ public class WorkerServlet extends HttpServlet {
 
 		@Override
 		public void run() {
-			sendWorkerStatus();
 			while(true){
+				sendWorkerStatus();
 				try {
 					Thread.sleep(10000);
 				} catch (InterruptedException e) {

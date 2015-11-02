@@ -142,7 +142,9 @@ public class MasterServlet extends HttpServlet {
                 Socket socket = new Socket(ip_addr,port_num);
                 
                 String body = "job="+jobinfo.getJob()+"&input="+jobinfo.getInput()+"&numThreads="+jobinfo.getNum_map_threads()
-                		+"&numWorkers="+num_active;
+                		+"&numWorkers="+jobinfo.getNum_active();
+                
+                System.out.println(jobinfo.getNum_active());
                 
                 int workernum = 1;
                 for(String mapkey : workermappings.keySet()){
