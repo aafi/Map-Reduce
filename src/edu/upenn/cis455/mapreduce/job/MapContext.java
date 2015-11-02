@@ -1,5 +1,9 @@
 package edu.upenn.cis455.mapreduce.job;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -9,14 +13,26 @@ import edu.upenn.cis455.mapreduce.Context;
 public class MapContext implements Context{
 
 	String[] worker_list = null;
-	public MapContext(String [] worker_list){
+	String basedir;
+	
+	public MapContext(String [] worker_list, String basedir){
 		this.worker_list = worker_list;
+		this.basedir = basedir;
 	}
 	
 	@Override
 	public synchronized void write(String key, String value) {
 		String hashedKey = hashKey(key);
 		int worker_id = decideBucket(hashedKey);
+		
+		try {
+			PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(basedir+worker_id+".txt", true)));
+			out.println(key+"\t"+value);
+			out.close();
+		} catch (IOException e) {
+			System.out.println("Could not write to file");
+		}
+		
 	}
 	
 	/**
@@ -40,6 +56,12 @@ public class MapContext implements Context{
 	      
 		  return sb.toString();
 	  }
+	  
+	  /**
+	   * This method decides which bucket the key belongs to
+	   * @param hashedKey
+	   * @return
+	   */
 	  
 	  private int decideBucket(String hashedKey){
 		  String max = "ffffffffffffffffffffffffffffffffffffffff";

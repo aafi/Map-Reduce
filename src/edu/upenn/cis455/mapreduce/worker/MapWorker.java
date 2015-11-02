@@ -7,6 +7,8 @@ public class MapWorker implements Runnable{
 
 	private MapContext context;
 	private Job job;
+	private boolean shutdown = false;
+	private boolean waiting = false;
 	
 	public MapWorker(Job job, MapContext context){
 		this.context = context;
@@ -16,7 +18,7 @@ public class MapWorker implements Runnable{
 	@Override
 	public void run() {
 		
-		while(true){
+		while(!shutdown){
 			String pair = null;
 			synchronized(MapQueue.mapQueue){
 				if(!MapQueue.mapQueue.isEmpty()){
@@ -25,6 +27,7 @@ public class MapWorker implements Runnable{
 				}else if(MapQueue.mapQueue.isEmpty()){
 					//Wait for queue to be not empty
 					try {
+						waiting = true;
 						MapQueue.mapQueue.wait();
 					} catch (InterruptedException e) {
 						break;
@@ -32,6 +35,7 @@ public class MapWorker implements Runnable{
 				}
 			} // End of synchronized block
 			
+			waiting = false;
 			if(pair!=null){
 				String key = pair.split("\t")[0];
 				String value = pair.split("\t")[1];
@@ -40,6 +44,18 @@ public class MapWorker implements Runnable{
 			}
 		}
 		
+	}
+	
+	public boolean isWaiting() {
+		return waiting;
+	}
+
+	public boolean isShutdown() {
+		return shutdown;
+	}
+
+	public void setShutdown(boolean shutdown) {
+		this.shutdown = shutdown;
 	}
 
 }

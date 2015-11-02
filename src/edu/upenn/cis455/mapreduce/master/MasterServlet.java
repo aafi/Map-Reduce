@@ -103,12 +103,12 @@ public class MasterServlet extends HttpServlet {
 	    }
 	    
 	    
-	    
 	    /**
 	     * Check if all the workers are idle. If yes then send the next job in the queue
 	     */
 	    Iterator<Entry<String, WorkerInfo>> it = workermappings.entrySet().iterator();
 	    boolean all_active = true;
+	    int num_active = 0;
 	    
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
@@ -118,8 +118,11 @@ public class MasterServlet extends HttpServlet {
             	if(!worker.getStatus().equals("idle")){
             		all_active = false;
             		break;
+            	}else{
+            		num_active++;
             	}
             }else{
+            	System.out.println("Removing inactives");
             	it.remove();
             }
         }
@@ -135,13 +138,11 @@ public class MasterServlet extends HttpServlet {
                 
                 String ip_addr = worker.getIp();
                 int port_num = worker.getPort();
+                
                 Socket socket = new Socket(ip_addr,port_num);
                 
-                String requestLine = "POST worker/runmap HTTP/1.0 \r\n"
-						  +"\r\n";
-                
                 String body = "job="+jobinfo.getJob()+"&input="+jobinfo.getInput()+"&numThreads="+jobinfo.getNum_map_threads()
-                		+"&numWorkers="+jobinfo.getNum_active();
+                		+"&numWorkers="+num_active;
                 
                 int workernum = 1;
                 for(String mapkey : workermappings.keySet()){
@@ -149,13 +150,22 @@ public class MasterServlet extends HttpServlet {
                 	workernum++;
                 }
                 
+                body = body+"\r\n";
+                
+                String requestLine = "POST /worker/runmap HTTP/1.0\r\n"
+                		  +"Content-Type: application/x-www-form-urlencoded\r\n"
+                		  +"Content-Length: "+body.getBytes().length+"\r\n"
+						  +"\r\n";
+              
                 String message = requestLine+body;
+                
                 
                 OutputStream output = socket.getOutputStream();
         		output.write(message.getBytes());
+        		output.flush();
         		output.close();
         		socket.close();
-        		
+        		System.out.println("sent job");
         		current_workers.add(worker);
             }
         }
