@@ -11,6 +11,7 @@ import edu.upenn.cis455.mapreduce.Context;
 public class ReduceContext implements Context {
 
 	private File outputfile;
+	public int keyswritten = 0;
 	
 	public ReduceContext(File file){
 		String filename = file.getAbsolutePath()+"/output.txt";
@@ -30,6 +31,8 @@ public class ReduceContext implements Context {
 		try {
 			out = new PrintWriter(new BufferedWriter(new FileWriter(outputfile, true)));
 			out.println(key+"\t"+value);
+			keyswritten++;
+			System.out.println("Written to file "+outputfile.getAbsolutePath());
 			out.close();
 		} catch (IOException e) {
 			System.out.println("Could not write to output file");

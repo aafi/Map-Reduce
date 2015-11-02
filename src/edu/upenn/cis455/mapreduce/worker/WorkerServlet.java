@@ -37,6 +37,12 @@ public class WorkerServlet extends HttpServlet {
   private String worker_port;
   private String job;
   
+  private Integer keysread;
+  private Integer keyswritten;
+  
+  private MapContext mapcontext;
+  private ReduceContext reducecontext;
+  
   public String getStatus() {
 	return status;
   }
@@ -55,6 +61,8 @@ public class WorkerServlet extends HttpServlet {
 	  this.master_port = Integer.parseInt(master.split(":")[1]);
 	  
 	  worker_port = config.getInitParameter("port");
+	  keysread = 0;
+	  keyswritten = 0;
 	  
 	  HeartBeat beat = new HeartBeat();
 	  Thread t = new Thread(beat);
@@ -114,11 +122,16 @@ public class WorkerServlet extends HttpServlet {
 		  
 		  makeSpoolOutFiles(storagedir+"spool_out",workers.length,workers);
 		  
-		  MapContext context = new MapContext(workers,storagedir+"spool_out/");
+		  mapcontext = new MapContext(workers,storagedir+"spool_out/");
+		  
+		  synchronized(keysread){
+		  	keysread = 0;
+		  }
+		  
 		  ArrayList<ThreadpoolThread> threadPool = new ArrayList<ThreadpoolThread>();
 		  
 		  for(int i=0;i<numthreads;i++){
-			 MapWorker worker = new MapWorker(jobclass,context);
+			 MapWorker worker = new MapWorker(jobclass,mapcontext);
 			 ThreadpoolThread thread = new ThreadpoolThread(worker);
 			 threadPool.add(thread);
 		  }
@@ -132,6 +145,10 @@ public class WorkerServlet extends HttpServlet {
 			  String currentLine = null;
 			  
 			  while((currentLine = br.readLine())!=null){
+				  synchronized(keysread){
+					  keysread++;
+				  }
+				  
 				  synchronized(MapQueue.mapQueue){
 					  MapQueue.mapQueue.add(currentLine);
 					  MapQueue.mapQueue.notifyAll();
@@ -223,6 +240,13 @@ public class WorkerServlet extends HttpServlet {
 	  //run the reducer threads
 	  else if(pathinfo.equals("runreduce")){
 		  System.out.println("received run reduce");
+		  
+		  File outputdir = new File(storagedir+request.getParameter("output"));
+		  checkDir(outputdir);
+		  
+		  reducecontext = new ReduceContext(outputdir);
+		  reducecontext.keyswritten = 0;
+		  
 		  status = "reducing";
 		  sendWorkerStatus();
 		  
@@ -230,8 +254,7 @@ public class WorkerServlet extends HttpServlet {
 		  File file = new File(storagedir+"spool_in/output.txt");
 		  
 		  job = request.getParameter("job");
-		  File outputdir = new File(storagedir+request.getParameter("output"));
-		  checkDir(outputdir);
+		  
 		  
 		  int numthreads = Integer.parseInt(request.getParameter("numThreads"));
 		  
@@ -256,17 +279,24 @@ public class WorkerServlet extends HttpServlet {
 			  e.printStackTrace();
 		  }
 		  
-		  ReduceContext context = new ReduceContext(outputdir);
+		  synchronized(keysread){
+			  	keysread = 0;
+		  }
+		  
 		  ArrayList<ThreadpoolThread> threadPool = new ArrayList<ThreadpoolThread>();
 		  
 		  for(int i=0;i<numthreads;i++){
-			 ReduceWorker worker = new ReduceWorker(jobclass,context);
+			 ReduceWorker worker = new ReduceWorker(jobclass,reducecontext);
 			 ThreadpoolThread thread = new ThreadpoolThread(worker);
 			 threadPool.add(thread);
 		  }
 		  
 		  sortFile(file);
-		  System.out.println("Done at "+new Date().toString());
+		  int n;
+		  synchronized(keysread){
+			 n = keysread;
+		  }
+		  System.out.println("Done at "+new Date().toString()+" keysread: "+n);
 		  shutdown = false;
 			
 		  while(!shutdown){
@@ -368,6 +398,10 @@ public class WorkerServlet extends HttpServlet {
 		ArrayList<String> list = null;
 		
 	    while ((line = in.readLine()) != null) {
+	    	synchronized(keysread){ 
+	    		keysread++;
+	    	}
+	    	
 	         if(line.split("\t")[0].equals(prev_word)){
 	        	 list.add(line);
 	        	 prev_word = line.split("\t")[0];
@@ -460,9 +494,8 @@ public class WorkerServlet extends HttpServlet {
 		url.append("&status="+status);
 		url.append("&job="+job);
 		
-		//TODO
-		url.append("&keysread=0");
-		url.append("&keyswritten=0");
+		url.append("&keysread="+getkeysread());
+		url.append("&keyswritten="+getkeyswritten());
 		String message = "GET "+url.toString()+" HTTP/1.0\r\n\r\n";
 		
 		try {
@@ -474,7 +507,32 @@ public class WorkerServlet extends HttpServlet {
 		
 	}
   
-  /**
+  private int getkeysread() {
+	if(status.equals("idle"))
+		return 0;
+	
+	int n = 0;
+	
+	synchronized(keysread){
+		n = keysread;
+	}
+	return n;
+  }
+
+  private int getkeyswritten() {
+	  if(mapcontext == null)
+		  return 0;
+	  
+	  if(status.equals("mapping") || status.equals("waiting"))
+		  return mapcontext.keyswritten;
+	  else if(status.equals("reducing") || status.equals("idle"))
+		  return reducecontext.keyswritten;
+	  
+	  return 0;
+	 
+  }
+
+/**
    * Class to send heart beat
    * @author cis455
    *

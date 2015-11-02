@@ -14,6 +14,7 @@ public class MapContext implements Context{
 
 	String[] worker_list = null;
 	String basedir;
+	public int keyswritten;
 	
 	public MapContext(String [] worker_list, String basedir){
 		this.worker_list = worker_list;
@@ -30,6 +31,7 @@ public class MapContext implements Context{
 			try {
 				out = new PrintWriter(new BufferedWriter(new FileWriter(basedir+worker_id+".txt", true)));
 				out.println(key+"\t"+value);
+				keyswritten++;
 				out.close();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
