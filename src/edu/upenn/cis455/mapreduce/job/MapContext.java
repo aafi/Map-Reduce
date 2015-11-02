@@ -25,13 +25,17 @@ public class MapContext implements Context{
 		String hashedKey = hashKey(key);
 		int worker_id = decideBucket(hashedKey);
 		
-		try {
-			PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(basedir+worker_id+".txt", true)));
-			out.println(key+"\t"+value);
-			out.close();
-		} catch (IOException e) {
-			System.out.println("Could not write to file");
-		}
+		
+			PrintWriter out;
+			try {
+				out = new PrintWriter(new BufferedWriter(new FileWriter(basedir+worker_id+".txt", true)));
+				out.println(key+"\t"+value);
+				out.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 		
 	}
 	

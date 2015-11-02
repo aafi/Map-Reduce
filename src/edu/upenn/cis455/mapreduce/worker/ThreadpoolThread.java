@@ -9,16 +9,28 @@ public class ThreadpoolThread {
 	
 	/** The thread */
 	private Thread thread;
-	private MapWorker worker;
+	private MapWorker map_worker;
+	private ReduceWorker reduce_worker;
 		
 	/**
-	 * Instantiates a new threadpool thread.
+	 * Instantiates a new threadpool thread for map.
 	 *
 	 * @param worker the worker object
 	 */
 	public ThreadpoolThread(MapWorker worker){
 		this.thread = new Thread(worker);
-		this.worker = worker;
+		this.map_worker = worker;
+		this.thread.start();
+	}
+	
+	/**
+	 * Instantiates a new threadpool thread for reduce.
+	 *
+	 * @param worker the worker object
+	 */
+	public ThreadpoolThread(ReduceWorker worker){
+		this.thread = new Thread(worker);
+		this.reduce_worker = worker;
 		this.thread.start();
 	}
 
@@ -32,12 +44,21 @@ public class ThreadpoolThread {
 	}
 
 	/**
-	 * Gets the worker.
+	 * Gets the map worker.
 	 *
 	 * @return the worker
 	 */
-	public MapWorker getWorker() {
-		return worker;
+	public MapWorker getMapWorker() {
+		return map_worker;
+	}
+	
+	/**
+	 * Gets the reduce worker.
+	 *
+	 * @return the worker
+	 */
+	public ReduceWorker getReduceWorker() {
+		return reduce_worker;
 	}
 		
 }

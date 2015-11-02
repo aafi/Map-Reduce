@@ -29,7 +29,7 @@ public class MasterServlet extends HttpServlet {
 	  String job =  request.getParameter("job");
 	  String input = request.getParameter("inputdir");
 	  String num_map_threads = request.getParameter("mapthreads");
-	  String output = request.getParameter("output");
+	  String output = request.getParameter("outputdir");
 	  String num_reduce_threads = request.getParameter("reducethreads");
 	  int num_active = 0;
 	  
@@ -69,16 +69,24 @@ public class MasterServlet extends HttpServlet {
 	    String key = ip+":"+port;
 	    workermappings.put(key, info);
 	    
+	    //Updating current worker status
+	    for(WorkerInfo inf : current_workers){
+	    	String id = inf.getIp()+":"+inf.getPort();
+	    	if(id.equals(key)){
+	    		System.out.println("Updating current worker ids");
+	    		inf.setStatus(status);
+	    	}
+	    }
+	    
 	    /**
 	     * Check if all the current workers are waiting, then send reduce job
 	     */
 	    boolean all_waiting = true;
-	    
 	    for(WorkerInfo worker : this.current_workers){
 	    	if(!worker.getStatus().equals("waiting")){
 	    		all_waiting = false;
-	    		break;
 	    	}
+	    		
 	    }
 	    
 	    if(all_waiting){
@@ -86,19 +94,19 @@ public class MasterServlet extends HttpServlet {
 	    		String ip_addr = worker.getIp();
                 int port_num = worker.getPort();
                 Socket socket = new Socket(ip_addr,port_num);
+                String body = "job="+current_job.getJob()+"&output="+current_job.getOutput()+"&numThreads="+current_job.getNum_reduce_threads();
                 
-                String requestLine = "POST /runreduce HTTP/1.0 \r\n"
-						  +"\r\n";
+                String requestLine = "POST /worker/runreduce HTTP/1.0\r\n"
+                		+"Content-Type: application/x-www-form-urlencoded\r\n"
+              		  	+"Content-Length: "+body.getBytes().length+"\r\n"
+						+"\r\n";
                 
-                String body = "job="+current_job.getJob()+"&output="+current_job.getOutput()+"&numThreads="+current_job.getNum_reduce_threads()
-                		+"\r\n";
                 String message = requestLine+body;
                 
                 OutputStream output = socket.getOutputStream();
         		output.write(message.getBytes());
         		output.close();
         		socket.close();
-        		
 		    }
 	    }
 	    
@@ -144,7 +152,6 @@ public class MasterServlet extends HttpServlet {
                 String body = "job="+jobinfo.getJob()+"&input="+jobinfo.getInput()+"&numThreads="+jobinfo.getNum_map_threads()
                 		+"&numWorkers="+jobinfo.getNum_active();
                 
-                System.out.println(jobinfo.getNum_active());
                 
                 int workernum = 1;
                 for(String mapkey : workermappings.keySet()){
@@ -167,7 +174,6 @@ public class MasterServlet extends HttpServlet {
         		output.flush();
         		output.close();
         		socket.close();
-        		System.out.println("sent job");
         		current_workers.add(worker);
             }
         }

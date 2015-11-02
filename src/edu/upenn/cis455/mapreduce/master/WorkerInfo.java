@@ -33,6 +33,10 @@ public class WorkerInfo {
 	public String getStatus() {
 		return status;
 	}
+	
+	public void setStatus(String status){
+		this.status = status;
+	}
 
 	public String getJob() {
 		return job;
@@ -49,7 +53,6 @@ public class WorkerInfo {
 	public String getIp(){
 		return ip;
 	}
-	
 	
 
 }

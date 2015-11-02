@@ -7,10 +7,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -21,6 +21,7 @@ import javax.servlet.http.*;
 
 import edu.upenn.cis455.mapreduce.Job;
 import edu.upenn.cis455.mapreduce.job.MapContext;
+import edu.upenn.cis455.mapreduce.job.ReduceContext;
 
 public class WorkerServlet extends HttpServlet {
 
@@ -149,21 +150,23 @@ public class WorkerServlet extends HttpServlet {
 				}
 				
 				shutdown = true;
+				
 				synchronized(MapQueue.mapQueue){
 					if(!MapQueue.mapQueue.isEmpty()){
 						shutdown = false;
 					}
 					
-					for(ThreadpoolThread t : threadPool){
-						if(!t.getWorker().isWaiting()){
-							shutdown = false;
-						}
+				}
+				
+				for(ThreadpoolThread t : threadPool){
+					if(!t.getMapWorker().isWaiting()){
+						shutdown = false;
 					}
 				}
 				
 				if(shutdown){
 					for(ThreadpoolThread t : threadPool){
-						t.getWorker().setShutdown(true);
+						t.getMapWorker().setShutdown(true);
 					}
 					
 					synchronized(MapQueue.mapQueue){
@@ -200,6 +203,7 @@ public class WorkerServlet extends HttpServlet {
 				  body.append((char)b);
 			  }
 			  
+			  br.close();
 			  Socket socket = new Socket(ip,port);
 			  String request_line = "POST /worker/pushdata HTTP/1.0\r\n"
 					  				+"Content-Length: "+body.toString().getBytes().length+"\r\n"
@@ -219,12 +223,105 @@ public class WorkerServlet extends HttpServlet {
 	  //run the reducer threads
 	  else if(pathinfo.equals("runreduce")){
 		  System.out.println("received run reduce");
+		  status = "reducing";
+		  sendWorkerStatus();
+		  
+		  //sort spool-in
+		  File file = new File(storagedir+"spool_in/output.txt");
+		  
+		  job = request.getParameter("job");
+		  File outputdir = new File(storagedir+request.getParameter("output"));
+		  checkDir(outputdir);
+		  
+		  int numthreads = Integer.parseInt(request.getParameter("numThreads"));
+		  
+		  /**
+		   * LOAD JOB CLASS
+		   */
+		  
+		  Class<Job> job_class = null;
+		  
+		  try {
+			job_class = (Class<Job>) Class.forName(job);
+		  } catch (ClassNotFoundException e) {
+				System.out.println("Job class not found");
+		  }
+		  
+		  Job jobclass = null;
+		  
+		  try {
+			jobclass = job_class.newInstance();
+		  } catch (InstantiationException | IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			  e.printStackTrace();
+		  }
+		  
+		  ReduceContext context = new ReduceContext(outputdir);
+		  ArrayList<ThreadpoolThread> threadPool = new ArrayList<ThreadpoolThread>();
+		  
+		  for(int i=0;i<numthreads;i++){
+			 ReduceWorker worker = new ReduceWorker(jobclass,context);
+			 ThreadpoolThread thread = new ThreadpoolThread(worker);
+			 threadPool.add(thread);
+		  }
+		  
+		  sortFile(file);
+		  System.out.println("Done at "+new Date().toString());
+		  shutdown = false;
+			
+		  while(!shutdown){
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e) {
+					System.out.println("Main thread interrupted");
+				}
+				
+				shutdown = true;
+					
+				synchronized(ReduceQueue.reduceQueue){
+					if(!ReduceQueue.reduceQueue.isEmpty()){
+						shutdown = false;
+					}
+				}
+				
+				for(ThreadpoolThread t : threadPool){
+					if(!t.getReduceWorker().isWaiting()){
+						shutdown = false;
+					}
+				}
+				
+				
+				
+				if(shutdown){
+					System.out.println("shutting down at "+new Date().toString());
+					for(ThreadpoolThread t : threadPool){
+						t.getReduceWorker().setShutdown(true);
+					}
+					
+					synchronized(ReduceQueue.reduceQueue){
+						ReduceQueue.reduceQueue.notifyAll();
+					}
+					
+				}
+		  } // End of while
+		  
+		  int num = 0;
+		  for(ThreadpoolThread t : threadPool){
+				try {
+					t.getThread().join();
+					num++;
+				} catch (InterruptedException e) {
+					System.out.println("Reduce Threads could not join");
+				}
+		  	}
+		  
+		  System.out.println("All thread joined "+num);
+		  status = "idle";
+		  sendWorkerStatus();
 	  }
 	  
 	  //write data out to file
 	  else if(pathinfo.equals("pushdata")){
-		  System.out.println("received pushdata");
-		  
 		  Integer length = Integer.parseInt(request.getHeader("Content-Length"));
 		  
 		  BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
@@ -243,7 +340,7 @@ public class WorkerServlet extends HttpServlet {
 		  File file = new File(storagedir+"spool_in/output.txt");
 		  if(!file.exists()){
 			  file.createNewFile();
-			  System.out.println("created file "+file.getPath());
+//			  System.out.println("created file "+file.getPath());
 		  }
 		  
 		  synchronized(file){
@@ -251,26 +348,70 @@ public class WorkerServlet extends HttpServlet {
 			  out.write(body);
 			  out.close();
 		  }
-		  
-	  }
-    
+	  } // End of pushdata
   }
   
   /**
+   * Sorts a given file by key for reduce phase.
+   * Populates the reduce queue.
+   * @param file
+   */
+  private boolean sortFile(File file) {
+	String command = "sort "+file.getAbsolutePath();
+	try {
+		Process p = Runtime.getRuntime().exec(command);
+		BufferedReader in = new BufferedReader(
+	               new InputStreamReader(p.getInputStream()) );
+		
+		String line;
+		String prev_word = null;
+		ArrayList<String> list = null;
+		
+	    while ((line = in.readLine()) != null) {
+	         if(line.split("\t")[0].equals(prev_word)){
+	        	 list.add(line);
+	        	 prev_word = line.split("\t")[0];
+	         }else{
+	        	 if(list!=null){
+		        	 synchronized(ReduceQueue.reduceQueue){
+		        		 ReduceQueue.reduceQueue.add(list);
+		        		 ReduceQueue.reduceQueue.notifyAll();
+		        	 }
+	        	 }
+	        	 
+	        	 list = new ArrayList<String>();
+	        	 boolean added = list.add(line);
+	        	 
+	        	 System.out.println("Added new list for "+line.split("\t")[0]+" "+added);
+	        	 prev_word = line.split("\t")[0];
+	         }
+	    }
+	    in.close();
+	} catch (IOException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+	
+	return true;
+  }
+
+/**
    * Checks if the given dir exists. 
    * If it does, deletes the directory and makes it again.
    * @param dir
    */
   private void checkDir(File dir) {
+	  System.out.println(dir.getAbsolutePath());
 	  if(dir.exists()){
 		  for(File file : dir.listFiles()){
-			 boolean result = file.delete();
+			 file.delete();
 		  }
 		  
 		  dir.delete();
 	  }
 	  
 	  dir.mkdir();
+	  System.out.println(dir.getAbsolutePath()+" created");
   }
   
   /**
