@@ -22,6 +22,12 @@ import edu.upenn.cis455.mapreduce.Job;
 import edu.upenn.cis455.mapreduce.job.MapContext;
 import edu.upenn.cis455.mapreduce.job.ReduceContext;
 
+/**
+ * Worker Servlet.
+ * Implements the doPost method.
+ * @author cis455
+ *
+ */
 public class WorkerServlet extends HttpServlet {
 
   static final long serialVersionUID = 455555002;
@@ -66,7 +72,9 @@ public class WorkerServlet extends HttpServlet {
 	  t.start();
   }
   
-  
+  /**
+   * Handles the runmap, runreduce and pushdata requests
+   */
   public void doPost(HttpServletRequest request, HttpServletResponse response) 
        throws java.io.IOException
   {
@@ -120,6 +128,7 @@ public class WorkerServlet extends HttpServlet {
 		  makeSpoolOutFiles(storagedir+"spool_out",workers.length,workers);
 		  
 		  mapcontext = new MapContext(workers,storagedir+"spool_out/");
+		  mapcontext.keyswritten = 0;
 		  
 		  synchronized(keysread){
 		  	keysread = 0;
@@ -498,6 +507,10 @@ public class WorkerServlet extends HttpServlet {
 		
 	}
   
+	/**
+	 * Gets the number of keys read at any stage
+	 * @return
+	 */
   private int getkeysread() {
 	if(status.equals("idle"))
 		return 0;
@@ -510,6 +523,10 @@ public class WorkerServlet extends HttpServlet {
 	return n;
   }
 
+  /**
+   * Gets the number of keys written in context
+   * @return
+   */
   private int getkeyswritten() {
 	  if(mapcontext == null)
 		  return 0;

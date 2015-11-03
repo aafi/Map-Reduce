@@ -1,5 +1,9 @@
 package edu.upenn.cis455.mapreduce.master;
 
+/**
+ * General utilites class
+ *
+ */
 public class Utilities {
 	
 	/**

@@ -1,24 +1,27 @@
-Full name:  ______________
-SEAS login: ______________
+Full name:  Anwesha Das	______________
+SEAS login: __anwesha____________
 
 Which features did you implement? 
   (list features, or write 'Entire assignment')
+Entire Assignment
 
 Did you complete any extra-credit tasks? If so, which ones?
   (list extra-credit tasks)
+None
 
 Any special instructions for building and running your solution?
   (include detailed instructions, or write 'None')
+For running multiple workers, I change the web.xml in each worker.war and modify the storagedir and port params.
 
 Did you personally write _all_ the code you are submitting
 (other than code from the course web page)?
-  [ ] Yes
+  [x] Yes
   [ ] No
 
 Did you copy any code from the Internet, or from classmates?
   [ ] Yes
-  [ ] No
+  [x] No
 
 Did you collaborate with anyone on this assignment?
   [ ] Yes
-  [ ] No
+  [x] No

@@ -3,8 +3,16 @@ package edu.upenn.cis455.mapreduce.job;
 import edu.upenn.cis455.mapreduce.Context;
 import edu.upenn.cis455.mapreduce.Job;
 
+/**
+ * Implements the map and reduce methods of the job.
+ * @author cis455
+ *
+ */
 public class WordCount implements Job {
   
+	/**
+	 * Map method gets splits the values on spaces and gets the different keys and sends it to context for writing.
+	 */
 	  public void map(String key, String value, Context context)
 	  {
 	    // Your map function for WordCount goes here
@@ -14,6 +22,9 @@ public class WordCount implements Job {
 		  
 	  }
 	  
+	  /**
+	   * Reduce method counts the number of occurences of each word and sends it to context
+	   */
 	  public void reduce(String key, String[] values, Context context)
 	  {
 	    // Your reduce function for WordCount goes here

@@ -8,11 +8,20 @@ import java.io.PrintWriter;
 
 import edu.upenn.cis455.mapreduce.Context;
 
+/**
+ * Implements the Reduce Context
+ * @author cis455
+ *
+ */
 public class ReduceContext implements Context {
 
 	private File outputfile;
 	public int keyswritten = 0;
 	
+	/**
+	 * Creates a new output file in the output directory
+	 * @param file
+	 */
 	public ReduceContext(File file){
 		String filename = file.getAbsolutePath()+"/output.txt";
 		this.outputfile = new File(filename);
@@ -29,6 +38,9 @@ public class ReduceContext implements Context {
 		
 	}
 	
+	/**
+	 * Writes the key value pairs to the output file
+	 */
 	@Override
 	public synchronized void write(String key, String value) {
 		PrintWriter out;

@@ -5,6 +5,11 @@ import java.util.ArrayList;
 import edu.upenn.cis455.mapreduce.Job;
 import edu.upenn.cis455.mapreduce.job.ReduceContext;
 
+/**
+ * Implements the reduce worker
+ * @author cis455
+ *
+ */
 public class ReduceWorker implements Runnable{
 
 	
@@ -18,6 +23,10 @@ public class ReduceWorker implements Runnable{
 		this.job = job;
 	}
 	
+	/**
+	 * Run method.
+	 * Retrieves a list of the same words and passes it to job's reduce method along with context
+	 */
 	@Override
 	public void run() {
 		

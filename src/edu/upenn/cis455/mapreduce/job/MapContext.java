@@ -10,6 +10,9 @@ import java.security.NoSuchAlgorithmException;
 
 import edu.upenn.cis455.mapreduce.Context;
 
+/**
+ * Implements map context
+ */
 public class MapContext implements Context{
 
 	String[] worker_list = null;
@@ -21,6 +24,9 @@ public class MapContext implements Context{
 		this.basedir = basedir;
 	}
 	
+	/**
+	 * writes to all the files in the spool-out directory
+	 */
 	@Override
 	public synchronized void write(String key, String value) {
 		String hashedKey = hashKey(key);

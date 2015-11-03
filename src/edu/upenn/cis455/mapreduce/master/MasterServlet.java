@@ -13,6 +13,11 @@ import java.util.Queue;
 
 import javax.servlet.http.*;
 
+/**
+ * Master Servlet
+ * @author cis455
+ *
+ */
 public class MasterServlet extends HttpServlet {
 
   static final long serialVersionUID = 455555001;
@@ -23,6 +28,9 @@ public class MasterServlet extends HttpServlet {
   JobInfo current_job;
   boolean sent_reduce = false;
 
+  /**
+   * Stores the job info in the job queue
+   */
   public void doPost(HttpServletRequest request, HttpServletResponse response) 
 	       throws java.io.IOException{
 	  
@@ -49,6 +57,9 @@ public class MasterServlet extends HttpServlet {
 	  job_queue.add(jobinfo);
   }
   
+  /**
+   * Handles /workerstatus and /status
+   */
   //GET workerstatus and GET status
   public void doGet(HttpServletRequest request, HttpServletResponse response) 
        throws java.io.IOException

@@ -2,6 +2,10 @@ package edu.upenn.cis455.mapreduce.master;
 
 import java.util.Date;
 
+/**
+ * Class to store info about each worker.
+ *
+ */
 public class WorkerInfo {
 	
 	private String ip;

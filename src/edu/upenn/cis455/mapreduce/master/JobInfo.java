@@ -1,5 +1,10 @@
 package edu.upenn.cis455.mapreduce.master;
 
+/**
+ * Class to store the details about each job submitted
+ * @author cis455
+ *
+ */
 public class JobInfo {
 	
 	private String job;

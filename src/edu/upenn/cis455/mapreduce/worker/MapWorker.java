@@ -3,6 +3,12 @@ package edu.upenn.cis455.mapreduce.worker;
 import edu.upenn.cis455.mapreduce.Job;
 import edu.upenn.cis455.mapreduce.job.MapContext;
 
+/**
+ * This class is the map worker.
+ * Implement the map threads.
+ * @author cis455
+ *
+ */
 public class MapWorker implements Runnable{
 
 	private MapContext context;
@@ -15,6 +21,9 @@ public class MapWorker implements Runnable{
 		this.job = job;
 	}
 	
+	/**
+	 * Calls the map method with the correct key value pairs and the context
+	 */
 	@Override
 	public void run() {
 		
